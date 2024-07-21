@@ -51,6 +51,12 @@ class Map:
             if rect.colliderect(wall):
                 return True
         return False
+    
+    def check_bullet_collision(self, bullet_rect):
+        for wall in self.walls:
+            if bullet_rect.colliderect(wall):
+                return True
+        return False
 
 # 벽 배열 설정
 wall_size = 50
@@ -128,7 +134,7 @@ while running:
         bullet_rect, (bullet_dx, bullet_dy), bullet_angle = bullets[i]
         bullet_rect.x += bullet_dx
         bullet_rect.y -= bullet_dy  # Y축 반전
-        if (bullet_rect.x < 0 or bullet_rect.x > SCREEN_WIDTH or bullet_rect.y < 0 or bullet_rect.y > SCREEN_HEIGHT):
+        if (bullet_rect.x < 0 or bullet_rect.x > SCREEN_WIDTH or bullet_rect.y < 0 or bullet_rect.y > SCREEN_HEIGHT or game_map.check_bullet_collision(bullet_rect)):
             bullets.pop(i)
 
     # 화면 업데이트
