@@ -4,9 +4,10 @@ import math
 # 초기화
 pygame.init()
 
-# 화면 크기 설정
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
+# 디스플레이 정보 가져오기
+info = pygame.display.Info()
+SCREEN_WIDTH = info.current_w
+SCREEN_HEIGHT = info.current_h
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("2D 슈팅 게임")
 
