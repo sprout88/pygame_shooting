@@ -27,6 +27,10 @@ bullet_height = 5
 bullet_speed = 7
 bullets = []  # 총알과 방향을 저장할 리스트
 
+# 쿨다운 설정
+fire_rate = 500  # 총알 발사 쿨다운 시간 (밀리초 단위)
+last_fire_time = pygame.time.get_ticks()
+
 # 플레이어 초기 위치
 player_centerx = SCREEN_WIDTH // 2
 player_centery = SCREEN_HEIGHT // 2
@@ -51,6 +55,9 @@ while running:
             running = False
 
     keys = pygame.key.get_pressed()
+    
+    # 현재 시간
+    current_time = pygame.time.get_ticks()
 
     # 회전 설정
     if keys[pygame.K_LEFT]:
@@ -73,10 +80,12 @@ while running:
 
     # 총알 발사
     if keys[pygame.K_SPACE]:
-        bullet_dx = bullet_speed * math.cos(math.radians(-player_angle))
-        bullet_dy = bullet_speed * math.sin(math.radians(-player_angle))
-        bullet_rect = pygame.Rect(player_centerx - bullet_width // 2, player_centery - bullet_height // 2, bullet_width, bullet_height)
-        bullets.append((bullet_rect, (bullet_dx, bullet_dy), player_angle))
+        if current_time - last_fire_time >= fire_rate:
+            bullet_dx = bullet_speed * math.cos(math.radians(-player_angle))
+            bullet_dy = bullet_speed * math.sin(math.radians(-player_angle))
+            bullet_rect = pygame.Rect(player_centerx - bullet_width // 2, player_centery - bullet_height // 2, bullet_width, bullet_height)
+            bullets.append((bullet_rect, (bullet_dx, bullet_dy), player_angle))
+            last_fire_time = current_time  # 마지막 발사 시간 업데이트
 
     # 총알 이동
     for i in range(len(bullets) - 1, -1, -1):
