@@ -37,9 +37,31 @@ last_fire_time = pygame.time.get_ticks()
 player_centerx = SCREEN_WIDTH // 2
 player_centery = SCREEN_HEIGHT // 2
 
-# 벽 설정
+# 벽을 관리하는 Map 클래스
+class Map:
+    def __init__(self, walls):
+        self.walls = walls  # 벽의 좌표와 크기를 포함한 리스트
+    
+    def draw(self, surface):
+        for wall in self.walls:
+            pygame.draw.rect(surface, BLUE, wall)
+    
+    def check_collision(self, rect):
+        for wall in self.walls:
+            if rect.colliderect(wall):
+                return True
+        return False
+
+# 벽 배열 설정
 wall_size = 50
-wall_rect = pygame.Rect(SCREEN_WIDTH // 4, SCREEN_HEIGHT // 4, wall_size, wall_size)
+walls = [
+    pygame.Rect(100, 100, wall_size, wall_size),
+    pygame.Rect(200, 150, wall_size, wall_size),
+    pygame.Rect(300, 200, wall_size, wall_size),
+    pygame.Rect(400, 250, wall_size, wall_size),
+    pygame.Rect(500, 300, wall_size, wall_size),
+]
+game_map = Map(walls)
 
 # 총알 그래픽 설정
 def draw_rotated_bullet(surface, color, center, width, height, angle):
@@ -49,10 +71,6 @@ def draw_rotated_bullet(surface, color, center, width, height, angle):
     rotated_bullet = pygame.transform.rotate(bullet_surface, -angle)
     rotated_rect = rotated_bullet.get_rect(center=center)
     surface.blit(rotated_bullet, rotated_rect.topleft)
-
-def check_collision(rect1, rect2):
-    """두 사각형이 충돌하는지 검사합니다."""
-    return rect1.colliderect(rect2)
 
 # 게임 루프 변수
 running = True
@@ -92,7 +110,7 @@ while running:
 
     # 플레이어의 충돌 검사 및 위치 업데이트
     new_player_rect = pygame.Rect(new_player_centerx - player_radius, new_player_centery - player_radius, player_radius * 2, player_radius * 2)
-    if not check_collision(new_player_rect, wall_rect):
+    if not game_map.check_collision(new_player_rect):
         player_centerx = new_player_centerx
         player_centery = new_player_centery
 
@@ -116,6 +134,9 @@ while running:
     # 화면 업데이트
     screen.fill(BLACK)
 
+    # 맵 그리기
+    game_map.draw(screen)
+
     # 플레이어 원 그리기
     pygame.draw.circle(screen, RED, (int(player_centerx), int(player_centery)), player_radius)
 
@@ -128,9 +149,6 @@ while running:
     # 총알 그리기
     for bullet_rect, _, bullet_angle in bullets:
         draw_rotated_bullet(screen, RED, bullet_rect.center, bullet_width, bullet_height, bullet_angle)
-
-    # 벽 그리기
-    pygame.draw.rect(screen, BLUE, wall_rect)
 
     pygame.display.flip()
     clock.tick(30)
