@@ -22,14 +22,23 @@ player_speed = 5
 player_angle = 0
 
 # 총알 설정
-bullet_width = 5
-bullet_height = 10
+bullet_width = 10
+bullet_height = 5
 bullet_speed = 7
 bullets = []  # 총알과 방향을 저장할 리스트
 
 # 플레이어 초기 위치
 player_centerx = SCREEN_WIDTH // 2
 player_centery = SCREEN_HEIGHT // 2
+
+# 총알 그래픽 설정
+def draw_rotated_bullet(surface, color, center, width, height, angle):
+    """회전된 총알을 그립니다."""
+    bullet_surface = pygame.Surface((width, height), pygame.SRCALPHA)
+    pygame.draw.rect(bullet_surface, color, (0, 0, width, height))
+    rotated_bullet = pygame.transform.rotate(bullet_surface, -angle)
+    rotated_rect = rotated_bullet.get_rect(center=center)
+    surface.blit(rotated_bullet, rotated_rect.topleft)
 
 # 게임 루프 변수
 running = True
@@ -67,11 +76,11 @@ while running:
         bullet_dx = bullet_speed * math.cos(math.radians(-player_angle))
         bullet_dy = bullet_speed * math.sin(math.radians(-player_angle))
         bullet_rect = pygame.Rect(player_centerx - bullet_width // 2, player_centery - bullet_height // 2, bullet_width, bullet_height)
-        bullets.append((bullet_rect, (bullet_dx, bullet_dy)))
+        bullets.append((bullet_rect, (bullet_dx, bullet_dy), player_angle))
 
     # 총알 이동
     for i in range(len(bullets) - 1, -1, -1):
-        bullet_rect, (bullet_dx, bullet_dy) = bullets[i]
+        bullet_rect, (bullet_dx, bullet_dy), bullet_angle = bullets[i]
         bullet_rect.x += bullet_dx
         bullet_rect.y -= bullet_dy  # Y축 반전
         if (bullet_rect.x < 0 or bullet_rect.x > SCREEN_WIDTH or bullet_rect.y < 0 or bullet_rect.y > SCREEN_HEIGHT):
@@ -89,8 +98,9 @@ while running:
     line_end_y = player_centery - line_length * math.sin(math.radians(-player_angle))
     pygame.draw.line(screen, GREEN, (int(player_centerx), int(player_centery)), (int(line_end_x), int(line_end_y)), 2)
 
-    for bullet_rect, _ in bullets:
-        pygame.draw.rect(screen, RED, bullet_rect)
+    # 총알 그리기
+    for bullet_rect, _, bullet_angle in bullets:
+        draw_rotated_bullet(screen, RED, bullet_rect.center, bullet_width, bullet_height, bullet_angle)
 
     pygame.display.flip()
     clock.tick(30)
