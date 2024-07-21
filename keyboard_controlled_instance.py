@@ -18,56 +18,94 @@ RED = (255, 0, 0)  # 플레이어 색상
 GREEN = (0, 255, 0)  # 직선 색상
 BLUE = (0, 0, 255)  # 벽 색상
 
-# 플레이어 설정
-player_radius = 30  # 플레이어 원의 반지름
-player_speed = 5
-player_angle = 0
+# 플레이어 클래스
+class Player:
+    def __init__(self, x, y, radius, speed, collision_manager):
+        self.x = x
+        self.y = y
+        self.radius = radius
+        self.speed = speed
+        self.angle = 0
+        self.collision_manager = collision_manager  # 충돌 관리 객체
 
-# 총알 설정
-bullet_width = 10
-bullet_height = 5
-bullet_speed = 7
-bullets = []  # 총알과 방향을 저장할 리스트
+    def draw(self, surface):
+        pygame.draw.circle(surface, RED, (int(self.x), int(self.y)), self.radius)
+        # 플레이어 방향에 직선 그리기
+        line_length = 100
+        line_end_x = self.x + line_length * math.cos(math.radians(-self.angle))
+        line_end_y = self.y - line_length * math.sin(math.radians(-self.angle))
+        pygame.draw.line(surface, GREEN, (int(self.x), int(self.y)), (int(line_end_x), int(line_end_y)), 2)
 
-# 쿨다운 설정
-fire_rate = 500  # 총알 발사 쿨다운 시간 (밀리초 단위)
-last_fire_time = pygame.time.get_ticks()
+    def move(self, keys):
+        dx = dy = 0
+        if keys[pygame.K_UP]:
+            dx = self.speed * math.cos(math.radians(-self.angle))
+            dy = self.speed * math.sin(math.radians(-self.angle))
+        if keys[pygame.K_DOWN]:
+            dx = -self.speed * math.cos(math.radians(-self.angle))
+            dy = -self.speed * math.sin(math.radians(-self.angle))
 
-# 플레이어 초기 위치
-player_centerx = SCREEN_WIDTH // 2
-player_centery = SCREEN_HEIGHT // 2
+        # 이동 후의 잠재적인 새 위치
+        new_x = self.x + dx
+        new_y = self.y - dy  # Y축 반전
+        new_rect = pygame.Rect(new_x - self.radius, new_y - self.radius, 2 * self.radius, 2 * self.radius)
+
+        # 새로운 위치가 벽과 충돌하지 않는 경우에만 위치 업데이트
+        if not self.collision_manager.check_collision(new_rect):
+            self.x, self.y = new_x, new_y
+
+    def rotate(self, direction):
+        self.angle += direction
+
+    def shoot(self):
+        return Bullet(self.x, self.y, self.angle)
+
+# 총알 클래스
+class Bullet:
+    def __init__(self, x, y, angle):
+        self.x = x
+        self.y = y
+        self.width = 10
+        self.height = 5
+        self.speed = 7
+        self.angle = angle
+        self.rect = pygame.Rect(x - self.width // 2, y - self.height // 2, self.width, self.height)
+        self.dx = self.speed * math.cos(math.radians(-self.angle))
+        self.dy = self.speed * math.sin(math.radians(-self.angle))
+
+    def update(self):
+        self.rect.x += self.dx
+        self.rect.y -= self.dy  # Y축 반전
+
+    def draw(self, surface):
+        draw_rotated_bullet(surface, RED, self.rect.center, self.width, self.height, self.angle)
 
 # 벽을 관리하는 Map 클래스
 class Map:
     def __init__(self, walls):
-        self.walls = walls  # 벽의 좌표와 크기를 포함한 리스트
+        self.walls = walls
     
     def draw(self, surface):
         for wall in self.walls:
             pygame.draw.rect(surface, BLUE, wall)
     
-    def check_collision(self, rect):
-        for wall in self.walls:
-            if rect.colliderect(wall):
-                return True
-        return False
-    
-    def check_bullet_collision(self, bullet_rect):
-        for wall in self.walls:
-            if bullet_rect.colliderect(wall):
-                return True
-        return False
+    def get_walls(self):
+        return self.walls
 
-# 벽 배열 설정
-wall_size = 50
-walls = [
-    pygame.Rect(100, 100, wall_size, wall_size),
-    pygame.Rect(200, 150, wall_size, wall_size),
-    pygame.Rect(300, 200, wall_size, wall_size),
-    pygame.Rect(400, 250, wall_size, wall_size),
-    pygame.Rect(500, 300, wall_size, wall_size),
-]
-game_map = Map(walls)
+# 충돌 관리 클래스
+class CollisionManager:
+    def __init__(self, game_map):
+        self.game_map = game_map
+
+    def check_collision(self, rect):
+        return any(rect.colliderect(wall) for wall in self.game_map.get_walls())
+
+    def check_player_collision(self, player):
+        player_rect = pygame.Rect(player.x - player.radius, player.y - player.radius, 2 * player.radius, 2 * player.radius)
+        return self.check_collision(player_rect)
+    
+    def check_bullet_collision(self, bullet):
+        return self.check_collision(bullet.rect)
 
 # 총알 그래픽 설정
 def draw_rotated_bullet(surface, color, center, width, height, angle):
@@ -82,6 +120,26 @@ def draw_rotated_bullet(surface, color, center, width, height, angle):
 running = True
 clock = pygame.time.Clock()
 
+# 벽 배열 설정
+wall_size = 50
+walls = [
+    pygame.Rect(100, 100, wall_size, wall_size),
+    pygame.Rect(200, 150, wall_size, wall_size),
+    pygame.Rect(300, 200, wall_size, wall_size),
+    pygame.Rect(400, 250, wall_size, wall_size),
+    pygame.Rect(500, 300, wall_size, wall_size),
+]
+game_map = Map(walls)
+collision_manager = CollisionManager(game_map)
+
+# 플레이어와 맵 초기화
+player = Player(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, 30, 5, collision_manager)
+
+# 총알 리스트와 쿨다운 설정
+bullets = []
+fire_rate = 500  # 총알 발사 쿨다운 시간 (밀리초 단위)
+last_fire_time = pygame.time.get_ticks()
+
 # 게임 루프
 while running:
     for event in pygame.event.get():
@@ -90,51 +148,28 @@ while running:
 
     keys = pygame.key.get_pressed()
     
-    # 현재 시간
-    current_time = pygame.time.get_ticks()
-
     # 회전 설정
     if keys[pygame.K_LEFT]:
-        player_angle += 5
+        player.rotate(5)
     if keys[pygame.K_RIGHT]:
-        player_angle -= 5
+        player.rotate(-5)
 
     # 이동 설정
-    dx = 0
-    dy = 0
-    if keys[pygame.K_UP]:
-        dx = player_speed * math.cos(math.radians(-player_angle))
-        dy = player_speed * math.sin(math.radians(-player_angle))
-
-    if keys[pygame.K_DOWN]:
-        dx = -player_speed * math.cos(math.radians(-player_angle))
-        dy = -player_speed * math.sin(math.radians(-player_angle))
-
-    # 이동 후 플레이어의 새로운 위치
-    new_player_centerx = player_centerx + dx
-    new_player_centery = player_centery - dy  # Y축 반전
-
-    # 플레이어의 충돌 검사 및 위치 업데이트
-    new_player_rect = pygame.Rect(new_player_centerx - player_radius, new_player_centery - player_radius, player_radius * 2, player_radius * 2)
-    if not game_map.check_collision(new_player_rect):
-        player_centerx = new_player_centerx
-        player_centery = new_player_centery
+    player.move(keys)
 
     # 총알 발사
-    if keys[pygame.K_SPACE]:
-        if current_time - last_fire_time >= fire_rate:
-            bullet_dx = bullet_speed * math.cos(math.radians(-player_angle))
-            bullet_dy = bullet_speed * math.sin(math.radians(-player_angle))
-            bullet_rect = pygame.Rect(player_centerx - bullet_width // 2, player_centery - bullet_height // 2, bullet_width, bullet_height)
-            bullets.append((bullet_rect, (bullet_dx, bullet_dy), player_angle))
-            last_fire_time = current_time  # 마지막 발사 시간 업데이트
+    current_time = pygame.time.get_ticks()
+    if keys[pygame.K_SPACE] and current_time - last_fire_time >= fire_rate:
+        bullets.append(player.shoot())
+        last_fire_time = current_time
 
-    # 총알 이동
+    # 총알 이동 및 충돌 검사
     for i in range(len(bullets) - 1, -1, -1):
-        bullet_rect, (bullet_dx, bullet_dy), bullet_angle = bullets[i]
-        bullet_rect.x += bullet_dx
-        bullet_rect.y -= bullet_dy  # Y축 반전
-        if (bullet_rect.x < 0 or bullet_rect.x > SCREEN_WIDTH or bullet_rect.y < 0 or bullet_rect.y > SCREEN_HEIGHT or game_map.check_bullet_collision(bullet_rect)):
+        bullet = bullets[i]
+        bullet.update()
+        if (bullet.rect.x < 0 or bullet.rect.x > SCREEN_WIDTH or 
+            bullet.rect.y < 0 or bullet.rect.y > SCREEN_HEIGHT or 
+            collision_manager.check_bullet_collision(bullet)):
             bullets.pop(i)
 
     # 화면 업데이트
@@ -143,18 +178,12 @@ while running:
     # 맵 그리기
     game_map.draw(screen)
 
-    # 플레이어 원 그리기
-    pygame.draw.circle(screen, RED, (int(player_centerx), int(player_centery)), player_radius)
-
-    # 플레이어 방향에 직선 그리기
-    line_length = 100  # 직선의 길이
-    line_end_x = player_centerx + line_length * math.cos(math.radians(-player_angle))
-    line_end_y = player_centery - line_length * math.sin(math.radians(-player_angle))
-    pygame.draw.line(screen, GREEN, (int(player_centerx), int(player_centery)), (int(line_end_x), int(line_end_y)), 2)
+    # 플레이어 그리기
+    player.draw(screen)
 
     # 총알 그리기
-    for bullet_rect, _, bullet_angle in bullets:
-        draw_rotated_bullet(screen, RED, bullet_rect.center, bullet_width, bullet_height, bullet_angle)
+    for bullet in bullets:
+        bullet.draw(screen)
 
     pygame.display.flip()
     clock.tick(30)
